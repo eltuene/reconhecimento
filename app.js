@@ -3,6 +3,7 @@ const multer = require('multer');
 const { spawn } = require('child_process');
 const admin = require('firebase-admin');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const port = 3000;
@@ -68,6 +69,9 @@ app.post('/salvar-aluno', upload.single('imagem'), async (req, res) => {
     // Verificar se o CPF ou matrícula já existem
     const isDuplicate = await checkDuplicateCpfOrMatricula(cpf, matricula);
     if (isDuplicate) {
+      fs.unlink(imagemPath, (err) => {
+        if (err) console.error(err);
+      });
       return res.status(400).send('CPF ou matrícula já existem.');
     }
 
@@ -76,7 +80,6 @@ app.post('/salvar-aluno', upload.single('imagem'), async (req, res) => {
     pythonProcess.stdout.on('data', async (data) => {
       try {
         const newPoints = JSON.parse(data.toString());
-        const fileName = path.basename(imagemPath);
 
         // Recuperar todos os pontos salvos no Firebase
         const snapshot = await db.ref('faces').once('value');
@@ -86,31 +89,52 @@ app.post('/salvar-aluno', upload.single('imagem'), async (req, res) => {
         // Comparar os pontos com os pontos existentes
         const isFaceDuplicate = await compareFacePoints(newPoints, existingPointsList);
         if (isFaceDuplicate) {
+          fs.unlink(imagemPath, (err) => {
+            if (err) console.error(err);
+          });
           return res.status(400).send('O rosto já foi registrado.');
         }
 
         // Salvar os novos pontos e informações adicionais no Firebase
         const ref = db.ref('faces').push();
-        ref.set({ fileName, pontos: newPoints, nome, cpf, matricula, curso }, (error) => {
+        ref.set({ pontos: newPoints, nome, cpf, matricula, curso }, (error) => {
           if (error) {
+            fs.unlink(imagemPath, (err) => {
+              if (err) console.error(err);
+            });
             res.status(500).send(error.toString());
           } else {
+            fs.unlink(imagemPath, (err) => {
+              if (err) console.error(err);
+            });
             res.json({ id: ref.key, pontos: newPoints, nome, cpf, matricula, curso });
           }
         });
       } catch (error) {
+        fs.unlink(imagemPath, (err) => {
+          if (err) console.error(err);
+        });
         res.status(500).send(error.toString());
       }
     });
 
     pythonProcess.stderr.on('data', (data) => {
+      fs.unlink(imagemPath, (err) => {
+        if (err) console.error(err);
+      });
       res.status(500).send(data.toString());
     });
 
     pythonProcess.on('error', (error) => {
+      fs.unlink(imagemPath, (err) => {
+        if (err) console.error(err);
+      });
       res.status(500).send(error.toString());
     });
   } catch (error) {
+    fs.unlink(imagemPath, (err) => {
+      if (err) console.error(err);
+    });
     res.status(500).send(error.toString());
   }
 });
