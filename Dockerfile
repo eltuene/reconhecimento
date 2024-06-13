@@ -17,7 +17,7 @@ RUN npm install
 COPY . .
 
 # Instale as dependências do Python
-RUN pip3 install -r requirements.txt
+RUN pip install -r requirements.txt
 
 # Exponha a porta em que o aplicativo vai rodar
 EXPOSE 3000
