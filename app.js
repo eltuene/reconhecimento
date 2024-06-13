@@ -4,9 +4,13 @@ const { spawn } = require('child_process');
 const admin = require('firebase-admin');
 const path = require('path');
 const fs = require('fs');
+const cors = require('cors');
 
 const app = express();
 const port = 3000;
+
+// Middleware CORS
+app.use(cors());
 
 // Firebase setup
 const serviceAccount = require('./serviceAccountKey.json');
@@ -75,7 +79,7 @@ app.post('/salvar-aluno', upload.single('imagem'), async (req, res) => {
       return res.status(400).send('CPF ou matrícula já existem.');
     }
 
-    const pythonProcess = spawn('python3', ['scripts/extrair_pontos.py', imagemPath]);
+    const pythonProcess = spawn('python', ['scripts/extrair_pontos.py', imagemPath]);
 
     pythonProcess.stdout.on('data', async (data) => {
       try {
@@ -135,6 +139,29 @@ app.post('/salvar-aluno', upload.single('imagem'), async (req, res) => {
     fs.unlink(imagemPath, (err) => {
       if (err) console.error(err);
     });
+    res.status(500).send(error.toString());
+  }
+});
+
+app.get('/contar-alunos', async (req, res) => {
+  try {
+    const snapshot = await db.ref('faces').once('value');
+    const facesData = snapshot.val();
+    const courseCounts = {};
+
+    if (facesData) {
+      Object.values(facesData).forEach(face => {
+        const { curso } = face;
+        if (courseCounts[curso]) {
+          courseCounts[curso]++;
+        } else {
+          courseCounts[curso] = 1;
+        }
+      });
+    }
+
+    res.json(courseCounts);
+  } catch (error) {
     res.status(500).send(error.toString());
   }
 });
