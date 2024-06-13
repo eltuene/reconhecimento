@@ -12,7 +12,7 @@ const port = 3000;
 const serviceAccount = require('./serviceAccountKey.json');
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: 'https://amf-games-default-rtdb.firebaseio.com'
+  databaseURL: 'https://amg-games-default-rtdb.firebaseio.com'
 });
 const db = admin.database();
 

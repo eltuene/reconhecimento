@@ -35,7 +35,7 @@ if __name__ == "__main__":
         if encodings is not None:
             print(encodings.tolist())
         else:
-            print("No face found in the image.", file=sys.stderr)
+            print("Nenhum rosto identificado.", file=sys.stderr)
     except Exception as e:
         print(str(e), file=sys.stderr)
         sys.exit(1)
