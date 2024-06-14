@@ -76,7 +76,7 @@ app.post('/salvar-aluno', upload.single('imagem'), async (req, res) => {
       fs.unlink(imagemPath, (err) => {
         if (err) console.error(err);
       });
-      return res.status(400).send('CPF ou matrícula já existem.');
+      return res.status(400).json({ message: 'CPF ou matrícula já existem.' });
     }
 
     const pythonProcess = spawn('python3', ['scripts/extrair_pontos.py', imagemPath]);
@@ -96,7 +96,7 @@ app.post('/salvar-aluno', upload.single('imagem'), async (req, res) => {
           fs.unlink(imagemPath, (err) => {
             if (err) console.error(err);
           });
-          return res.status(400).send('O rosto já foi registrado.');
+          return res.status(400).json({ message: 'O rosto já foi registrado.' });
         }
 
         // Salvar os novos pontos e informações adicionais no Firebase
@@ -106,7 +106,7 @@ app.post('/salvar-aluno', upload.single('imagem'), async (req, res) => {
             fs.unlink(imagemPath, (err) => {
               if (err) console.error(err);
             });
-            res.status(500).send(error.toString());
+            res.status(500).json({ message: error.toString() });
           } else {
             fs.unlink(imagemPath, (err) => {
               if (err) console.error(err);
@@ -118,7 +118,7 @@ app.post('/salvar-aluno', upload.single('imagem'), async (req, res) => {
         fs.unlink(imagemPath, (err) => {
           if (err) console.error(err);
         });
-        res.status(500).send(error.toString());
+        res.status(500).json({ message: error.toString() });
       }
     });
 
@@ -126,20 +126,20 @@ app.post('/salvar-aluno', upload.single('imagem'), async (req, res) => {
       fs.unlink(imagemPath, (err) => {
         if (err) console.error(err);
       });
-      res.status(500).send(data.toString());
+      res.status(500).json({ message: data.toString() });
     });
 
     pythonProcess.on('error', (error) => {
       fs.unlink(imagemPath, (err) => {
         if (err) console.error(err);
       });
-      res.status(500).send(error.toString());
+      res.status(500).json({ message: error.toString() });
     });
   } catch (error) {
     fs.unlink(imagemPath, (err) => {
       if (err) console.error(err);
     });
-    res.status(500).send(error.toString());
+    res.status(500).json({ message: error.toString() });
   }
 });
 
@@ -162,7 +162,7 @@ app.get('/contar-alunos', async (req, res) => {
 
     res.json(courseCounts);
   } catch (error) {
-    res.status(500).send(error.toString());
+    res.status(500).json({ message: error.toString() });
   }
 });
 
