@@ -79,7 +79,7 @@ app.post('/salvar-aluno', upload.single('imagem'), async (req, res) => {
       return res.status(400).send('CPF ou matrícula já existem.');
     }
 
-    const pythonProcess = spawn('python', ['scripts/extrair_pontos.py', imagemPath]);
+    const pythonProcess = spawn('python3', ['scripts/extrair_pontos.py', imagemPath]);
 
     pythonProcess.stdout.on('data', async (data) => {
       try {
