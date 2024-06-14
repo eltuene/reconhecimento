@@ -61,7 +61,7 @@ Este é um sistema básico de reconhecimento facial que usa Node.js, Firebase Re
 ### Exemplo de Requisição para Salvar Aluno
 
 ```bash
-curl -X POST http://localhost:3000/salvar-aluno \
+curl -X POST http://localhost:3005/salvar-aluno \
     -F 'imagem=@caminho/para/imagem.jpg' \
     -F 'nome=Nome do Aluno' \
     -F 'cpf=12345678901' \
