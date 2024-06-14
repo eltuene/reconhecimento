@@ -2,7 +2,7 @@
 FROM node:20
 
 # Instale Python
-RUN apt-get update && apt-get install -y python3 python3-pip
+RUN apt-get update && apt-get install -y python3 python3-pip python3.11-venv
 
 # Defina o diretório de trabalho no contêiner
 WORKDIR /usr/src/app
