@@ -16,10 +16,9 @@ RUN npm install
 # Copie o restante dos arquivos da aplicação para o diretório de trabalho
 COPY . .
 
-# Instale as dependências do Python
+# Crie e ative o ambiente virtual do Python
 RUN python3 -m venv .venv
-RUN source .venv/bin/activate
-RUN pip install -r requirements.txt
+RUN /bin/bash -c "source .venv/bin/activate && pip install -r requirements.txt"
 
 # Exponha a porta em que o aplicativo vai rodar
 EXPOSE 3000
