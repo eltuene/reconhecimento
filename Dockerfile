@@ -17,6 +17,8 @@ RUN npm install
 COPY . .
 
 # Instale as dependências do Python
+RUN python3 -m venv .venv
+RUN source .venv/bin/activate
 RUN pip install -r requirements.txt
 
 # Exponha a porta em que o aplicativo vai rodar
