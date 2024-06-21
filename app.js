@@ -46,9 +46,9 @@ const checkDuplicateCpfOrMatricula = async (cpf, matricula) => {
 };
 
 // Função para comparar os pontos do rosto com os pontos existentes no Firebase
-const compareFacePoints = (newPoints, existingPoints) => {
+const compareFacePoints = (newPoints, pointsPath) => {
   return new Promise((resolve, reject) => {
-    const pythonProcess = spawn('python3', ['scripts/comparar_pontos.py', JSON.stringify(newPoints), JSON.stringify(existingPoints)]);
+    const pythonProcess = spawn('python3', ['scripts/comparar_pontos.py', JSON.stringify(newPoints), pointsPath]);
 
     pythonProcess.stdout.on('data', (data) => {
       const result = data.toString().trim() === 'True';
@@ -90,10 +90,17 @@ app.post('/salvar-aluno', upload.single('imagem'), async (req, res) => {
         const facesData = snapshot.val();
         const existingPointsList = facesData ? Object.values(facesData).map(face => face.pontos) : [];
 
+        // Salvar os pontos em um arquivo temporário
+        const pointsPath = path.join(__dirname, 'public', 'uploads', `${Date.now()}-points.json`);
+        fs.writeFileSync(pointsPath, JSON.stringify(existingPointsList));
+
         // Comparar os pontos com os pontos existentes
-        const isFaceDuplicate = await compareFacePoints(newPoints, existingPointsList);
+        const isFaceDuplicate = await compareFacePoints(newPoints, pointsPath);
         if (isFaceDuplicate) {
           fs.unlink(imagemPath, (err) => {
+            if (err) console.error(err);
+          });
+          fs.unlink(pointsPath, (err) => {
             if (err) console.error(err);
           });
           return res.status(400).json({ message: 'O rosto já foi registrado.' });
@@ -106,9 +113,15 @@ app.post('/salvar-aluno', upload.single('imagem'), async (req, res) => {
             fs.unlink(imagemPath, (err) => {
               if (err) console.error(err);
             });
+            fs.unlink(pointsPath, (err) => {
+              if (err) console.error(err);
+            });
             res.status(500).json({ message: error.toString() });
           } else {
             fs.unlink(imagemPath, (err) => {
+              if (err) console.error(err);
+            });
+            fs.unlink(pointsPath, (err) => {
               if (err) console.error(err);
             });
             res.json({ id: ref.key, pontos: newPoints, nome, cpf, matricula, curso });

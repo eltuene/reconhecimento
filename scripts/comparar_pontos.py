@@ -20,8 +20,15 @@ if __name__ == "__main__":
         
         # Obter os argumentos
         new_encoding = json.loads(sys.argv[1])
-        known_encodings = json.loads(sys.argv[2])
+        known_encodings_path = sys.argv[2]
+                
+        # Carregar os encodings conhecidos do arquivo
+        with open(known_encodings_path, "r") as file:
+            known_encodings = json.load(file)
         
+        # Converter os encodings para numpy arrays
+        known_encodings = [np.array(encoding) for encoding in known_encodings]
+                
         # Comparar com os encodings conhecidos
         if compare_faces(np.array(new_encoding), [np.array(encoding) for encoding in known_encodings]):
             print("True")
