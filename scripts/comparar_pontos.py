@@ -5,7 +5,7 @@ import json
 
 def compare_faces(new_encoding, known_encodings):
     try:
-        results = face_recognition.compare_faces(known_encodings, new_encoding)
+        results = face_recognition.compare_faces(known_encodings, new_encoding, 0.4)
         return any(results)
     except Exception as e:
         print(str(e), file=sys.stderr)
