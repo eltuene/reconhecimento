@@ -5,6 +5,7 @@ const admin = require('firebase-admin');
 const path = require('path');
 const fs = require('fs');
 const cors = require('cors');
+const moment = require('moment-timezone');
 
 const app = express();
 const port = 3005;
@@ -16,7 +17,7 @@ app.use(cors());
 const serviceAccount = require('./serviceAccountKey.json');
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: 'https://amg-games-default-rtdb.firebaseio.com'
+  databaseURL: "https://amf-games-default-rtdb.firebaseio.com"
 });
 const db = admin.database();
 
@@ -34,12 +35,14 @@ const upload = multer({ storage });
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Função para verificar se o CPF ou matrícula já existem
-const checkDuplicateCpfOrMatricula = async (cpf, matricula) => {
-  const snapshot = await db.ref('faces').orderByChild('cpf').equalTo(cpf).once('value');
-  if (snapshot.exists()) return true;
+// Função para capturar a data atual no formato YYYY-MM-DD com o horário de São Paulo
+const getCurrentDate = () => {
+  return moment().tz("America/Sao_Paulo").format('YYYY-MM-DD');
+};
 
-  const matriculaSnapshot = await db.ref('faces').orderByChild('matricula').equalTo(matricula).once('value');
+// Função para verificar se a matrícula já foi registrada para o dia atual
+const checkDuplicateMatricula = async (matricula, date) => {
+  const matriculaSnapshot = await db.ref(`presencas/${date}`).orderByChild('matricula').equalTo(matricula).once('value');
   if (matriculaSnapshot.exists()) return true;
 
   return false;
@@ -65,18 +68,20 @@ const compareFacePoints = (newPoints, pointsPath) => {
   });
 };
 
+// Rota para salvar presença do aluno
 app.post('/salvar-aluno', upload.single('imagem'), async (req, res) => {
   const imagemPath = req.file.path;
-  const { nome, cpf, matricula, curso } = req.body;
+  const { nome, matricula } = req.body;
 
   try {
-    // Verificar se o CPF ou matrícula já existem
-    const isDuplicate = await checkDuplicateCpfOrMatricula(cpf, matricula);
+    const currentDate = getCurrentDate();
+
+    const isDuplicate = await checkDuplicateMatricula(matricula, currentDate);
     if (isDuplicate) {
       fs.unlink(imagemPath, (err) => {
         if (err) console.error(err);
       });
-      return res.status(400).json({ message: 'CPF ou matrícula já existem.' });
+      return res.status(400).json({ message: 'Presença já registrada para este dia.' });
     }
 
     const pythonProcess = spawn('python3', ['scripts/extrair_pontos.py', imagemPath]);
@@ -85,16 +90,13 @@ app.post('/salvar-aluno', upload.single('imagem'), async (req, res) => {
       try {
         const newPoints = JSON.parse(data.toString());
 
-        // Recuperar todos os pontos salvos no Firebase
-        const snapshot = await db.ref('faces').once('value');
+        const snapshot = await db.ref(`presencas/${currentDate}`).once('value');
         const facesData = snapshot.val();
         const existingPointsList = facesData ? Object.values(facesData).map(face => face.pontos) : [];
 
-        // Salvar os pontos em um arquivo temporário
         const pointsPath = path.join(__dirname, 'public', 'uploads', `${Date.now()}-points.json`);
         fs.writeFileSync(pointsPath, JSON.stringify(existingPointsList));
 
-        // Comparar os pontos com os pontos existentes
         const isFaceDuplicate = await compareFacePoints(newPoints, pointsPath);
         if (isFaceDuplicate) {
           fs.unlink(imagemPath, (err) => {
@@ -106,9 +108,8 @@ app.post('/salvar-aluno', upload.single('imagem'), async (req, res) => {
           return res.status(400).json({ message: 'O rosto já foi registrado.' });
         }
 
-        // Salvar os novos pontos e informações adicionais no Firebase
-        const ref = db.ref('faces').push();
-        ref.set({ pontos: newPoints, nome, cpf, matricula, curso }, (error) => {
+        const ref = db.ref(`presencas/${currentDate}`).push();
+        ref.set({ pontos: newPoints, nome, matricula }, (error) => {
           if (error) {
             fs.unlink(imagemPath, (err) => {
               if (err) console.error(err);
@@ -124,7 +125,7 @@ app.post('/salvar-aluno', upload.single('imagem'), async (req, res) => {
             fs.unlink(pointsPath, (err) => {
               if (err) console.error(err);
             });
-            res.json({ id: ref.key, pontos: newPoints, nome, cpf, matricula, curso });
+            res.json({ id: ref.key, pontos: newPoints, nome, matricula });
           }
         });
       } catch (error) {
@@ -156,24 +157,33 @@ app.post('/salvar-aluno', upload.single('imagem'), async (req, res) => {
   }
 });
 
-app.get('/contar-alunos', async (req, res) => {
+// Rota para listar todos os alunos presentes em todos os dias
+app.get('/alunos-presentes-todos-dias', async (req, res) => {
   try {
-    const snapshot = await db.ref('faces').once('value');
-    const facesData = snapshot.val();
-    const courseCounts = {};
+    const snapshot = await db.ref('presencas').once('value');
+    const presencasData = snapshot.val();
 
-    if (facesData) {
-      Object.values(facesData).forEach(face => {
-        const { curso } = face;
-        if (courseCounts[curso]) {
-          courseCounts[curso]++;
-        } else {
-          courseCounts[curso] = 1;
-        }
-      });
+    if (!presencasData) {
+      return res.status(404).json({ message: 'Nenhuma presença encontrada.' });
     }
 
-    res.json(courseCounts);
+    const alunosPresentes = [];
+
+    Object.keys(presencasData).forEach(date => {
+      const presencasDoDia = presencasData[date];
+
+      Object.values(presencasDoDia).forEach(face => {
+        alunosPresentes.push({
+          nome: face.nome,
+          matricula: face.matricula,
+          data: date
+        });
+      });
+    });
+
+    alunosPresentes.sort((a, b) => a.nome.localeCompare(b.nome));
+
+    res.json(alunosPresentes);
   } catch (error) {
     res.status(500).json({ message: error.toString() });
   }
